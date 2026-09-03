@@ -6,6 +6,33 @@
   <br>
 </h1>
 
+## Fork additions
+
+This fork of [TheBoredTeam/boring.notch](https://github.com/TheBoredTeam/boring.notch)
+adds a handful of opt-in indicators. Everything below is disabled by default and
+toggled from Settings.
+
+| Feature | Where | Settings pane |
+| --- | --- | --- |
+| Weather (temperature + conditions) | Closed notch | System |
+| CPU and memory pressure | Closed notch | System |
+| VPN status badge | Closed notch | shown automatically when a VPN is up |
+| Bluetooth device battery levels | Battery menu | shown automatically for supported devices |
+| Focus mode changes | Sneak peek | shown automatically |
+| Deepseek API credit balance | Notch header | Deepseek |
+
+Weather comes from [Open-Meteo](https://open-meteo.com) and needs no API key;
+coordinates are resolved once via IP geolocation on first launch and can be
+overridden manually.
+
+> **Note on the Deepseek API key:** it is stored unencrypted in the app's local
+> preferences (`UserDefaults`), not in the Keychain, and is only sent to
+> `api.deepseek.com` to read your balance.
+
+This fork also carries a fix for HUD replacement being silently disabled when the
+XPC helper does not inherit the main app's Accessibility grant.
+
+---
 
 <p align="center">
   <a title="Crowdin" target="_blank" href="https://crowdin.com/project/boring-notch"><img src="https://badges.crowdin.net/boring-notch/localized.svg"></a>
@@ -38,32 +65,6 @@ Say hello to **Boring Notch**, the coolest way to make your MacBook’s notch th
 - [Star History](#star-history)
 - [Buy us a coffee!](#buy-us-a-coffee)
 - [Acknowledgments](#-acknowledgments)-->
-
-## Fork additions
-
-This fork of [TheBoredTeam/boring.notch](https://github.com/TheBoredTeam/boring.notch)
-adds a handful of opt-in indicators. Everything below is disabled by default and
-toggled from Settings.
-
-| Feature | Where | Settings pane |
-| --- | --- | --- |
-| Weather (temperature + conditions) | Closed notch | System |
-| CPU and memory pressure | Closed notch | System |
-| VPN status badge | Closed notch | shown automatically when a VPN is up |
-| Bluetooth device battery levels | Battery menu | shown automatically for supported devices |
-| Focus mode changes | Sneak peek | shown automatically |
-| Deepseek API credit balance | Notch header | Deepseek |
-
-Weather comes from [Open-Meteo](https://open-meteo.com) and needs no API key;
-coordinates are resolved once via IP geolocation on first launch and can be
-overridden manually.
-
-> **Note on the Deepseek API key:** it is stored unencrypted in the app's local
-> preferences (`UserDefaults`), not in the Keychain, and is only sent to
-> `api.deepseek.com` to read your balance.
-
-This fork also carries a fix for HUD replacement being silently disabled when the
-XPC helper does not inherit the main app's Accessibility grant.
 
 ## Installation
 

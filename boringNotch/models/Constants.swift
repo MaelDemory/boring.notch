@@ -188,6 +188,20 @@ extension Defaults.Keys {
     static let customAccentColorData = Key<Data?>("customAccentColorData", default: nil)
     // Show or hide the title bar
     static let hideTitleBar = Key<Bool>("hideTitleBar", default: true)
+
+    // MARK: Weather
+    static let showWeather = Key<Bool>("showWeather", default: false)
+    static let weatherLatitude = Key<Double>("weatherLatitude", default: 0.0)
+    static let weatherLongitude = Key<Double>("weatherLongitude", default: 0.0)
+    static let weatherTemperatureUnit = Key<String>("weatherTemperatureUnit", default: "celsius")
+
+    // MARK: System Monitor
+    static let showCPUUsage = Key<Bool>("showCPUUsage", default: false)
+    static let showRAMUsage = Key<Bool>("showRAMUsage", default: false)
+
+    // MARK: Deepseek
+    static let deepseekAPIKey = Key<String>("deepseekAPIKey", default: "")
+    static let showDeepseekBalance = Key<Bool>("showDeepseekBalance", default: false)
     
     // Helper to determine the default media controller based on NowPlaying deprecation status
     static var defaultMediaController: MediaControllerType {

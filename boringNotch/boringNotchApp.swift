@@ -435,6 +435,31 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
+        // Initialize Deepseek balance monitoring
+        if Defaults[.showDeepseekBalance] && !Defaults[.deepseekAPIKey].isEmpty {
+            Task { await DeepseekManager.shared.fetchBalance() }
+        }
+
+        // Initialize Focus Mode monitoring
+        _ = FocusModeManager.shared
+
+        // Start Bluetooth battery monitoring
+        BluetoothBatteryManager.shared.start()
+
+        // Observe Focus Mode changes → trigger animation
+        NotificationCenter.default.addObserver(
+            forName: Notification.Name("FocusModeChanged"),
+            object: nil,
+            queue: .main
+        ) { notification in
+            guard notification.userInfo?["name"] is String else { return }
+            Task { @MainActor in
+                BoringViewCoordinator.shared.toggleSneakPeek(
+                    status: true, type: .focus, value: 1, icon: "moon.fill"
+                )
+            }
+        }
+
         previousScreens = NSScreen.screens
     }
 

@@ -5,6 +5,7 @@
 //  Created by Richard Kunkli on 07/08/2024.
 //
 
+import ApplicationServices
 import AVFoundation
 import Defaults
 import EventKit
@@ -45,6 +46,12 @@ struct SettingsView: View {
                 NavigationLink(value: "Battery") {
                     Label("Battery", systemImage: "battery.100.bolt")
                 }
+                NavigationLink(value: "System") {
+                    Label("System", systemImage: "gauge.with.dots.needle.33percent")
+                }
+                NavigationLink(value: "Deepseek") {
+                    Label("Deepseek", systemImage: "brain.head.profile")
+                }
 //                NavigationLink(value: "Downloads") {
 //                    Label("Downloads", systemImage: "square.and.arrow.down")
 //                }
@@ -83,6 +90,10 @@ struct SettingsView: View {
                     HUD()
                 case "Battery":
                     Charge()
+                case "System":
+                    SystemSettings()
+                case "Deepseek":
+                    DeepseekSettings()
                 case "Shelf":
                     Shelf()
                 case "Shortcuts":
@@ -382,6 +393,250 @@ struct Charge: View {
     }
 }
 
+struct SystemSettings: View {
+    @Default(.showWeather) private var showWeather
+    @Default(.weatherLatitude) private var weatherLat
+    @Default(.weatherLongitude) private var weatherLon
+    @Default(.weatherTemperatureUnit) private var tempUnit
+    @Default(.showCPUUsage) private var showCPU
+    @Default(.showRAMUsage) private var showRAM
+    @ObservedObject private var weatherManager = WeatherManager.shared
+    @ObservedObject private var systemMonitor = SystemMonitor.shared
+
+    var body: some View {
+        Form {
+            // MARK: Weather
+            Section {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Weather")
+                            .font(.headline)
+                        Text("Shows current temperature and conditions in the notch")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 40)
+                    Defaults.Toggle("", key: .showWeather)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .controlSize(.large)
+                        .onChange(of: showWeather) { _, newVal in
+                            if newVal {
+                                weatherManager.start()
+                            } else {
+                                weatherManager.stop()
+                            }
+                        }
+                }
+
+                if showWeather {
+                    Picker("Unit", selection: $tempUnit) {
+                        Text("Celsius (°C)").tag("celsius")
+                        Text("Fahrenheit (°F)").tag("fahrenheit")
+                    }
+
+                    HStack {
+                        Text("Latitude")
+                        Spacer()
+                        TextField("0.0", value: $weatherLat, format: .number)
+                            .frame(width: 100)
+                            .multilineTextAlignment(.trailing)
+                    }
+                    HStack {
+                        Text("Longitude")
+                        Spacer()
+                        TextField("0.0", value: $weatherLon, format: .number)
+                            .frame(width: 100)
+                            .multilineTextAlignment(.trailing)
+                    }
+
+                    if weatherManager.cityName != nil {
+                        HStack {
+                            Text("City")
+                            Spacer()
+                            Text(weatherManager.cityName ?? "")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    Button("Refresh Now") {
+                        Task { await weatherManager.fetchWeather() }
+                    }
+                    .disabled(weatherManager.isLoading)
+                }
+            } header: {
+                Text("Weather")
+            } footer: {
+                Text("Weather data from Open-Meteo (free, no API key needed). Coordinates are auto-detected on first launch via IP geolocation.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            // MARK: System Monitor
+            Section {
+                Defaults.Toggle(key: .showCPUUsage) {
+                    Text("Show CPU usage")
+                }
+                .onChange(of: showCPU) { _, newVal in
+                    if newVal || showRAM { systemMonitor.start() } else { systemMonitor.stop() }
+                }
+
+                Defaults.Toggle(key: .showRAMUsage) {
+                    Text("Show RAM usage")
+                }
+                .onChange(of: showRAM) { _, newVal in
+                    if newVal || showCPU { systemMonitor.start() } else { systemMonitor.stop() }
+                }
+            } header: {
+                Text("System Monitor")
+            } footer: {
+                Text("CPU and memory indicators appear in the notch when enabled.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .accentColor(.effectiveAccent)
+        .navigationTitle("System")
+    }
+}
+
+struct DeepseekSettings: View {
+    @Default(.deepseekAPIKey) private var apiKey
+    @Default(.showDeepseekBalance) private var showDeepseekBalance
+    @ObservedObject private var manager = DeepseekManager.shared
+    @State private var isTestingConnection = false
+    @State private var testResult: String? = nil
+
+    var body: some View {
+        Form {
+            Section {
+                SecureField("Deepseek API Key", text: $apiKey)
+                    .textFieldStyle(.roundedBorder)
+                    .help("Enter your Deepseek API key from https://platform.deepseek.com")
+
+                Button(action: testConnection) {
+                    HStack {
+                        if isTestingConnection {
+                            ProgressView()
+                                .scaleEffect(0.7)
+                                .progressViewStyle(CircularProgressViewStyle())
+                        }
+                        Text(isTestingConnection ? "Testing..." : "Test Connection")
+                    }
+                }
+                .disabled(apiKey.isEmpty || isTestingConnection)
+
+                if let result = testResult {
+                    HStack {
+                        Image(systemName: result.hasPrefix("Success") ? "checkmark.circle.fill" : "xmark.circle.fill")
+                            .foregroundColor(result.hasPrefix("Success") ? .green : .red)
+                        Text(result)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            } header: {
+                Text("API Configuration")
+            } footer: {
+                Text("Your API key is stored unencrypted in this app's local preferences and is only sent to Deepseek's servers to fetch your balance.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            Section {
+                Defaults.Toggle(key: .showDeepseekBalance) {
+                    HStack {
+                        Text("Show Deepseek balance in notch")
+                        customBadge(text: "New")
+                    }
+                }
+            } header: {
+                Text("Notch Display")
+            }
+
+            if !apiKey.isEmpty {
+                Section {
+                    if manager.isLoading {
+                        HStack {
+                            ProgressView()
+                                .scaleEffect(0.7)
+                            Text("Loading balance...")
+                                .foregroundColor(.secondary)
+                        }
+                    } else if let error = manager.errorMessage {
+                        Text(error)
+                            .foregroundColor(.red)
+                            .font(.caption)
+                    } else if !manager.balanceInfos.isEmpty {
+                        ForEach(manager.balanceInfos) { info in
+                            HStack {
+                                Text("\(info.currency) Balance")
+                                Spacer()
+                                Text("¥\(info.totalBalance)")
+                                    .fontWeight(.semibold)
+                            }
+                            HStack {
+                                Text("Topped up")
+                                    .foregroundColor(.secondary)
+                                    .font(.caption)
+                                Spacer()
+                                Text("¥\(info.toppedUpBalance)")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            HStack {
+                                Text("Granted")
+                                    .foregroundColor(.secondary)
+                                    .font(.caption)
+                                Spacer()
+                                Text("¥\(info.grantedBalance)")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    } else {
+                        Text("No balance data. Tap Test Connection to fetch.")
+                            .foregroundColor(.secondary)
+                            .font(.caption)
+                    }
+                } header: {
+                    HStack {
+                        Text("Current Balance")
+                        if !manager.balanceInfos.isEmpty {
+                            Button("Refresh") {
+                                Task { await manager.fetchBalance() }
+                            }
+                            .font(.caption)
+                            .controlSize(.small)
+                        }
+                    }
+                }
+            }
+        }
+        .accentColor(.effectiveAccent)
+        .navigationTitle("Deepseek")
+    }
+
+    private func testConnection() {
+        guard !apiKey.isEmpty else { return }
+        isTestingConnection = true
+        testResult = nil
+
+        Task { @MainActor in
+            await manager.fetchBalance()
+            isTestingConnection = false
+
+            if let error = manager.errorMessage {
+                testResult = "Failed: \(error)"
+            } else if manager.isAvailable {
+                testResult = "Success! Connected to Deepseek API."
+            } else {
+                testResult = "Connected but account may be restricted."
+            }
+        }
+    }
+}
+
 //struct Downloads: View {
 //    @Default(.selectedDownloadIndicatorStyle) var selectedDownloadIndicatorStyle
 //    @Default(.selectedDownloadIconStyle) var selectedDownloadIconStyle
@@ -575,7 +830,9 @@ struct HUD: View {
         .accentColor(.effectiveAccent)
         .navigationTitle("HUDs")
         .task {
-            accessibilityAuthorized = await XPCHelperClient.shared.isAccessibilityAuthorized()
+            let xpcAuth = await XPCHelperClient.shared.isAccessibilityAuthorized()
+            // Fallback: XPC helper may not inherit main app's accessibility grant
+            accessibilityAuthorized = xpcAuth || AXIsProcessTrusted()
         }
         .onAppear {
             XPCHelperClient.shared.startMonitoringAccessibilityAuthorization()
